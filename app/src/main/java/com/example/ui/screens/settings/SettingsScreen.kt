@@ -1066,8 +1066,8 @@ fun SettingsScreen(
                 Button(
                     onClick = {
                         if (pinStep == 1) {
-                            if (firstPinInput.length != 4) {
-                                pinError = "PIN must be 4 digits."
+                            if (firstPinInput.length != com.example.util.PinHasher.PIN_LENGTH) {
+                                pinError = "PIN must be ${com.example.util.PinHasher.PIN_LENGTH} digits."
                             } else {
                                 pinStep = 2
                                 pinError = null
@@ -1076,10 +1076,11 @@ fun SettingsScreen(
                             if (secondPinInput != firstPinInput) {
                                 pinError = "PINs do not match. Try again."
                             } else {
-                                viewModel.setCustomPin(firstPinInput)
-                                viewModel.setAppLockEnabled(true)
-                                showSetPinDialog = false
-                                Toast.makeText(context, "App PIN created and lock enabled!", Toast.LENGTH_SHORT).show()
+                                viewModel.setCustomPin(firstPinInput) {
+                                    viewModel.setAppLockEnabled(true)
+                                    showSetPinDialog = false
+                                    Toast.makeText(context, "App PIN created and lock enabled!", Toast.LENGTH_SHORT).show()
+                                }
                             }
                         }
                     },
@@ -1146,14 +1147,15 @@ fun SettingsScreen(
                     onClick = {
                         if (!viewModel.verifyPin(currentPinInput)) {
                             pinError = "Current PIN is incorrect."
-                        } else if (newPinInput.length != 4) {
-                            pinError = "New PIN must be 4 digits."
+                        } else if (newPinInput.length != com.example.util.PinHasher.PIN_LENGTH) {
+                            pinError = "New PIN must be ${com.example.util.PinHasher.PIN_LENGTH} digits."
                         } else if (newPinInput != confirmNewPinInput) {
                             pinError = "New PINs do not match."
                         } else {
-                            viewModel.setCustomPin(newPinInput)
-                            showChangePinDialog = false
-                            Toast.makeText(context, "Hisaab PIN updated successfully!", Toast.LENGTH_SHORT).show()
+                            viewModel.setCustomPin(newPinInput) {
+                                showChangePinDialog = false
+                                Toast.makeText(context, "Hisaab PIN updated successfully!", Toast.LENGTH_SHORT).show()
+                            }
                         }
                     }
                 ) {

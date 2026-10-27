@@ -71,6 +71,7 @@ fun AppLockScreen(
     val context = LocalContext.current
     val strings = LocalAppStrings.current
     val isFingerprintEnabled by viewModel.isFingerprintEnabled.collectAsStateWithLifecycle()
+    val isSecurityLoaded by viewModel.isSecurityLoaded.collectAsStateWithLifecycle()
 
     var enteredPin by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -257,12 +258,12 @@ fun AppLockScreen(
                 }
             }
 
-            // PIN Dots Indicator (4 dots by default, expands for legacy >4-digit PIN input)
+            // PIN Dots Indicator (PIN_LENGTH dots by default, expands for legacy >4-digit PIN input)
             Row(
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                 modifier = Modifier.padding(vertical = 12.dp)
             ) {
-                val dotCount = maxOf(4, enteredPin.length)
+                val dotCount = maxOf(com.example.util.PinHasher.PIN_LENGTH, enteredPin.length)
                 repeat(dotCount) { index ->
                     val isFilled = index < enteredPin.length
                     Box(
@@ -280,7 +281,7 @@ fun AppLockScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Custom Keypad (1-9, Fingerprint/Clear, 0, Submitting/Backspace)
-            val isKeypadDisabled = lockoutSecondsRemaining > 0
+            val isKeypadDisabled = lockoutSecondsRemaining > 0 || !isSecurityLoaded
 
             Column(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -534,14 +535,15 @@ fun AppLockScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        if (legacyNewPin.length != 4) {
-                            legacyResetError = "PIN must be exactly 4 digits."
+                        if (legacyNewPin.length != com.example.util.PinHasher.PIN_LENGTH) {
+                            legacyResetError = "PIN must be exactly ${com.example.util.PinHasher.PIN_LENGTH} digits."
                         } else if (legacyNewPin != legacyConfirmPin) {
                             legacyResetError = "PINs do not match."
                         } else {
-                            viewModel.setCustomPin(legacyNewPin)
-                            showLegacyResetDialog = false
-                            viewModel.unlockApp()
+                            viewModel.setCustomPin(legacyNewPin) {
+                                showLegacyResetDialog = false
+                                viewModel.unlockApp()
+                            }
                         }
                     }
                 ) {

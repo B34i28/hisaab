@@ -82,6 +82,7 @@ class ShopRepository(
     val isFingerprintEnabled: Flow<Boolean> = dataStoreManager.isFingerprintEnabled
     val autoLockTimeoutSeconds: Flow<Int> = dataStoreManager.autoLockTimeoutSeconds
     val customPin: Flow<String?> = dataStoreManager.customPin
+    val isSecurityLoaded: Flow<Boolean> = dataStoreManager.isSecurityLoaded
     val themeMode: Flow<String> = dataStoreManager.themeMode
     val appLanguage: Flow<String> = dataStoreManager.appLanguage
 

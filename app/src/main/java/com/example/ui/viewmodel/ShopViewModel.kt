@@ -86,16 +86,19 @@ class ShopViewModel(application: Application) : AndroidViewModel(application) {
 
     // App Lock States
     val isAppLockEnabled: StateFlow<Boolean> = repository.isAppLockEnabled
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     val isFingerprintEnabled: StateFlow<Boolean> = repository.isFingerprintEnabled
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     val autoLockTimeoutSeconds: StateFlow<Int> = repository.autoLockTimeoutSeconds
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 30)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 30)
 
     val customPin: StateFlow<String?> = repository.customPin
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    val isSecurityLoaded: StateFlow<Boolean> = repository.isSecurityLoaded
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     private val _isAppLocked = MutableStateFlow(false)
     val isAppLocked: StateFlow<Boolean> = _isAppLocked.asStateFlow()
@@ -149,9 +152,10 @@ class ShopViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun setCustomPin(pin: String?) {
+    fun setCustomPin(pin: String?, onComplete: (() -> Unit)? = null) {
         viewModelScope.launch {
             repository.setCustomPin(pin)
+            onComplete?.invoke()
         }
     }
 

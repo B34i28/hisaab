@@ -74,16 +74,28 @@ class DataStoreManager(private val context: Context) {
         }
     }
 
+    val isSecurityLoaded: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        val pinExists = preferences[CUSTOM_PIN_KEY] != null
+        val lockEnabled = preferences[APP_LOCK_ENABLED_KEY] ?: false
+        android.util.Log.d("HisaabSecurity", "DataStore security loaded from disk. AppLockEnabled: $lockEnabled, CustomPinExists: $pinExists")
+        true
+    }
+
     val customPin: Flow<String?> = context.dataStore.data.map { preferences ->
-        preferences[CUSTOM_PIN_KEY]
+        val pin = preferences[CUSTOM_PIN_KEY]
+        android.util.Log.d("HisaabSecurity", "DataStore customPin emitted. Hash exists: ${pin != null}")
+        pin
     }
 
     suspend fun setCustomPin(plainPin: String?) {
         context.dataStore.edit { preferences ->
-            if (plainPin != null) {
-                preferences[CUSTOM_PIN_KEY] = PinHasher.createStoredPinHash(plainPin)
+            if (!plainPin.isNullOrEmpty()) {
+                val newHash = PinHasher.createStoredPinHash(plainPin)
+                preferences[CUSTOM_PIN_KEY] = newHash
+                android.util.Log.d("HisaabSecurity", "setCustomPin persisted to DataStore disk. PIN length: ${plainPin.length}")
             } else {
                 preferences.remove(CUSTOM_PIN_KEY)
+                android.util.Log.d("HisaabSecurity", "CUSTOM_PIN_KEY removed from DataStore disk.")
             }
         }
     }

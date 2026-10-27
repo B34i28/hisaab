@@ -1,14 +1,17 @@
 package com.example.util
 
 import android.util.Base64
+import android.util.Log
 import java.security.SecureRandom
 import java.security.spec.KeySpec
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 
 object PinHasher {
+    const val PIN_LENGTH = 4
     private const val ITERATIONS = 10_000
     private const val KEY_LENGTH = 256
+    private const val TAG = "HisaabSecurity"
 
     fun generateSalt(): String {
         val random = SecureRandom()
@@ -28,25 +31,32 @@ object PinHasher {
     fun createStoredPinHash(pin: String): String {
         val salt = generateSalt()
         val hash = hashPin(pin, salt)
+        Log.d(TAG, "Creating new stored PIN hash (salt length: ${salt.length}, hash length: ${hash.length})")
         return "$salt$$hash"
     }
 
     fun verifyPin(enteredPin: String, storedPinHash: String?): Boolean {
+        val storedHashExists = !storedPinHash.isNullOrEmpty()
+        Log.d(TAG, "verifyPin called. Stored hash exists: $storedHashExists, entered PIN length: ${enteredPin.length}")
+
         val stored = storedPinHash ?: return false
         if (stored.isEmpty()) return false
 
-        // Support legacy plain-text migration if existing stored PIN was plain text (e.g. "1234")
-        if (!stored.contains("$")) {
-            return enteredPin == stored
+        val isMatch: Boolean = if (!stored.contains("$")) {
+            enteredPin == stored
+        } else {
+            val parts = stored.split("$")
+            if (parts.size != 2) {
+                false
+            } else {
+                val salt = parts[0]
+                val expectedHash = parts[1]
+                val actualHash = hashPin(enteredPin, salt)
+                actualHash == expectedHash
+            }
         }
 
-        val parts = stored.split("$")
-        if (parts.size != 2) return false
-
-        val salt = parts[0]
-        val expectedHash = parts[1]
-        val actualHash = hashPin(enteredPin, salt)
-
-        return actualHash == expectedHash
+        Log.d(TAG, "PIN comparison result: $isMatch")
+        return isMatch
     }
 }
