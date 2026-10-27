@@ -39,17 +39,7 @@ class MainActivity : FragmentActivity() {
             val appLanguage by viewModel.appLanguage.collectAsStateWithLifecycle()
             val isAppLockEnabled by viewModel.isAppLockEnabled.collectAsStateWithLifecycle()
 
-            // Enable FLAG_SECURE whenever app lock is enabled to protect recent apps screenshots
-            LaunchedEffect(isAppLockEnabled) {
-                if (isAppLockEnabled) {
-                    window.setFlags(
-                        WindowManager.LayoutParams.FLAG_SECURE,
-                        WindowManager.LayoutParams.FLAG_SECURE
-                    )
-                } else {
-                    window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
-                }
-            }
+            // Note: FLAG_SECURE is omitted here so streaming emulator preview in browser can capture and render the app window
 
             val isDark = when (themeMode) {
                 ThemeMode.LIGHT -> false
