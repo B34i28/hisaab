@@ -35,6 +35,10 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -141,6 +145,11 @@ fun AppLockScreen(
         }
     }
 
+    var showLegacyResetDialog by remember { mutableStateOf(false) }
+    var legacyNewPin by remember { mutableStateOf("") }
+    var legacyConfirmPin by remember { mutableStateOf("") }
+    var legacyResetError by remember { mutableStateOf<String?>(null) }
+
     fun submitPin(pin: String) {
         if (lockoutSecondsRemaining > 0) return
 
@@ -149,7 +158,11 @@ fun AppLockScreen(
             lockoutRound = 1
             errorMessage = null
             enteredPin = ""
-            viewModel.unlockApp()
+            if (pin.length > 4) {
+                showLegacyResetDialog = true
+            } else {
+                viewModel.unlockApp()
+            }
         } else {
             failedAttemptsCount++
             enteredPin = ""
@@ -244,7 +257,7 @@ fun AppLockScreen(
                 }
             }
 
-            // PIN Dots Indicator (4-6 digits)
+            // PIN Dots Indicator (4 dots by default, expands for legacy >4-digit PIN input)
             Row(
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                 modifier = Modifier.padding(vertical = 12.dp)
@@ -266,7 +279,7 @@ fun AppLockScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Custom Keypad (1-9, Fingerprint/Clear, 0, Submit/Backspace)
+            // Custom Keypad (1-9, Fingerprint/Clear, 0, Submitting/Backspace)
             val isKeypadDisabled = lockoutSecondsRemaining > 0
 
             Column(
@@ -336,8 +349,11 @@ fun AppLockScreen(
                                                     val next = enteredPin + key
                                                     enteredPin = next
                                                     errorMessage = null
-                                                    // Auto-submit if PIN length matches 4-6 digits and is verified
-                                                    if (next.length >= 4 && viewModel.verifyPin(next)) {
+                                                    // Auto-submit if PIN matches at 4 digits, or at up to 6 digits for legacy PIN
+                                                    if (viewModel.verifyPin(next)) {
+                                                        submitPin(next)
+                                                    } else if (next.length == 6) {
+                                                        // 6 digits entered and failed -> submit to trigger error & counter
                                                         submitPin(next)
                                                     }
                                                 }
@@ -364,8 +380,8 @@ fun AppLockScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Submit Button if user enters 4-6 digits
-            if (enteredPin.length in 4..6) {
+            // Submit Button if user enters 4 or more digits
+            if (enteredPin.length >= 4) {
                 Button(
                     onClick = { submitPin(enteredPin) },
                     enabled = !isKeypadDisabled,
@@ -463,6 +479,76 @@ fun AppLockScreen(
                     Text(text = strings.cancel)
                 }
             }
+        )
+    }
+
+    // Mandatory 4-Digit PIN Reset Dialog for Legacy >4-Digit Users
+    if (showLegacyResetDialog) {
+        AlertDialog(
+            onDismissRequest = { /* Modal, user must update PIN */ },
+            title = {
+                Text(
+                    text = "Set New 4-Digit PIN",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = "Hisaab PINs are now exactly 4 digits. Please set a new 4-digit PIN to continue:",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    OutlinedTextField(
+                        value = legacyNewPin,
+                        onValueChange = { input ->
+                            if (input.length <= 4 && input.all { it.isDigit() }) {
+                                legacyNewPin = input
+                                legacyResetError = null
+                            }
+                        },
+                        label = { Text("New 4-Digit PIN") },
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = legacyConfirmPin,
+                        onValueChange = { input ->
+                            if (input.length <= 4 && input.all { it.isDigit() }) {
+                                legacyConfirmPin = input
+                                legacyResetError = null
+                            }
+                        },
+                        label = { Text("Confirm 4-Digit PIN") },
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (legacyResetError != null) {
+                        Text(legacyResetError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (legacyNewPin.length != 4) {
+                            legacyResetError = "PIN must be exactly 4 digits."
+                        } else if (legacyNewPin != legacyConfirmPin) {
+                            legacyResetError = "PINs do not match."
+                        } else {
+                            viewModel.setCustomPin(legacyNewPin)
+                            showLegacyResetDialog = false
+                            viewModel.unlockApp()
+                        }
+                    }
+                ) {
+                    Text("Save & Unlock")
+                }
+            },
+            shape = RoundedCornerShape(20.dp)
         )
     }
 }

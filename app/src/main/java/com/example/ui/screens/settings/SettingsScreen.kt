@@ -757,7 +757,7 @@ fun SettingsScreen(
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                                 )
                                 Text(
-                                    text = if (isAppLockEnabled) "App PIN lock is enabled" else "Require a 4-6 digit PIN to open Hisaab",
+                                    text = if (isAppLockEnabled) "App PIN lock is enabled" else "Require a 4-digit PIN to open Hisaab",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -804,7 +804,7 @@ fun SettingsScreen(
                                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
                                         )
                                         Text(
-                                            text = if (customPin != null) "4-6 digit salted hash PIN active" else "No PIN set",
+                                            text = if (customPin != null) "4-digit salted hash PIN active" else "No PIN set",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -1027,26 +1027,26 @@ fun SettingsScreen(
             onDismissRequest = { showSetPinDialog = false },
             title = {
                 Text(
-                    text = if (pinStep == 1) "Create App PIN (4-6 Digits)" else "Confirm App PIN",
+                    text = if (pinStep == 1) "Create App PIN (4 Digits)" else "Confirm App PIN",
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
                 )
             },
             text = {
                 Column {
                     Text(
-                        text = if (pinStep == 1) "Enter a 4-6 digit numeric PIN for Hisaab:" else "Re-enter the PIN to confirm:",
+                        text = if (pinStep == 1) "Enter a 4-digit numeric PIN for Hisaab:" else "Re-enter the PIN to confirm:",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     OutlinedTextField(
                         value = if (pinStep == 1) firstPinInput else secondPinInput,
                         onValueChange = { input ->
-                            if (input.length <= 6 && input.all { it.isDigit() }) {
+                            if (input.length <= 4 && input.all { it.isDigit() }) {
                                 if (pinStep == 1) firstPinInput = input else secondPinInput = input
                                 pinError = null
                             }
                         },
-                        label = { Text("4-6 Digit PIN") },
+                        label = { Text("4-Digit PIN") },
                         isError = pinError != null,
                         supportingText = {
                             if (pinError != null) {
@@ -1066,8 +1066,8 @@ fun SettingsScreen(
                 Button(
                     onClick = {
                         if (pinStep == 1) {
-                            if (firstPinInput.length !in 4..6) {
-                                pinError = "PIN must be 4 to 6 digits."
+                            if (firstPinInput.length != 4) {
+                                pinError = "PIN must be 4 digits."
                             } else {
                                 pinStep = 2
                                 pinError = null
@@ -1120,8 +1120,8 @@ fun SettingsScreen(
                     )
                     OutlinedTextField(
                         value = newPinInput,
-                        onValueChange = { if (it.length <= 6 && it.all { c -> c.isDigit() }) newPinInput = it },
-                        label = { Text("New PIN (4-6 digits)") },
+                        onValueChange = { if (it.length <= 4 && it.all { c -> c.isDigit() }) newPinInput = it },
+                        label = { Text("New PIN (4 digits)") },
                         visualTransformation = PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                         singleLine = true,
@@ -1129,7 +1129,7 @@ fun SettingsScreen(
                     )
                     OutlinedTextField(
                         value = confirmNewPinInput,
-                        onValueChange = { if (it.length <= 6 && it.all { c -> c.isDigit() }) confirmNewPinInput = it },
+                        onValueChange = { if (it.length <= 4 && it.all { c -> c.isDigit() }) confirmNewPinInput = it },
                         label = { Text("Confirm New PIN") },
                         visualTransformation = PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
@@ -1146,8 +1146,8 @@ fun SettingsScreen(
                     onClick = {
                         if (!viewModel.verifyPin(currentPinInput)) {
                             pinError = "Current PIN is incorrect."
-                        } else if (newPinInput.length !in 4..6) {
-                            pinError = "New PIN must be 4 to 6 digits."
+                        } else if (newPinInput.length != 4) {
+                            pinError = "New PIN must be 4 digits."
                         } else if (newPinInput != confirmNewPinInput) {
                             pinError = "New PINs do not match."
                         } else {
@@ -1176,7 +1176,7 @@ fun SettingsScreen(
             title = { Text("Hisaab PIN Authorization") },
             text = {
                 Column {
-                    Text("Enter your 4-6 digit PIN to authorize this action:")
+                    Text("Enter your 4-digit PIN to authorize this action:")
                     Spacer(modifier = Modifier.height(10.dp))
                     OutlinedTextField(
                         value = verifyPinInput,
