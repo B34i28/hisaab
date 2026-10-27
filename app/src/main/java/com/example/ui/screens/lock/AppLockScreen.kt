@@ -1,6 +1,8 @@
 package com.example.ui.screens.lock
 
-import androidx.compose.animation.AnimatedVisibility
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,23 +19,27 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Backspace
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Pin
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -49,39 +55,114 @@ import androidx.compose.ui.unit.sp
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.viewmodel.ShopViewModel
+import com.example.util.BackupUtils
 import com.example.util.BiometricAuthUtils
+import com.example.util.LocalAppStrings
+import kotlinx.coroutines.delay
 
 @Composable
 fun AppLockScreen(
     viewModel: ShopViewModel
 ) {
     val context = LocalContext.current
-    val customPin by viewModel.customPin.collectAsStateWithLifecycle()
+    val strings = LocalAppStrings.current
+    val isFingerprintEnabled by viewModel.isFingerprintEnabled.collectAsStateWithLifecycle()
+
     var enteredPin by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
+    // Lockout delay logic (5 failed attempts -> 30s lockout, doubling on each subsequent failed round)
+    var failedAttemptsCount by remember { mutableIntStateOf(0) }
+    var lockoutRound by remember { mutableIntStateOf(1) }
+    var lockoutSecondsRemaining by remember { mutableIntStateOf(0) }
+    var showForgotPinDialog by remember { mutableStateOf(false) }
+    var showConfirmClearDataDialog by remember { mutableStateOf(false) }
+
     val activity = context as? FragmentActivity
-    val hasDeviceAuth = remember { BiometricAuthUtils.canAuthenticate(context) }
+    val hasBiometric = remember { BiometricAuthUtils.canAuthenticate(context) }
+
+    // Backup restore launcher for Forgot PIN flow
+    val openDocLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            val jsonString = BackupUtils.readFromUri(context, uri)
+            if (jsonString != null) {
+                try {
+                    val backup = BackupUtils.parseBackupJson(jsonString)
+                    viewModel.restoreBackup(
+                        backup = backup,
+                        onSuccess = {
+                            viewModel.unlockApp()
+                        },
+                        onError = { err ->
+                            errorMessage = err
+                        }
+                    )
+                } catch (e: Exception) {
+                    errorMessage = e.message ?: "Invalid backup file"
+                }
+            }
+        }
+    }
+
+    // Lockout countdown timer
+    LaunchedEffect(lockoutSecondsRemaining) {
+        if (lockoutSecondsRemaining > 0) {
+            delay(1000L)
+            lockoutSecondsRemaining -= 1
+        }
+    }
 
     fun triggerBiometricPrompt() {
-        if (activity != null && hasDeviceAuth) {
+        if (activity != null && isFingerprintEnabled && hasBiometric) {
             BiometricAuthUtils.authenticate(
                 activity = activity,
-                title = "Unlock ShopLedger",
-                subtitle = "Verify your biometric or device screen lock",
+                title = "Hisaab Fingerprint",
+                subtitle = strings.fingerprintNote,
+                negativeButtonText = strings.useHisaabPin,
                 onSuccess = {
                     viewModel.unlockApp()
                 },
-                onError = { error ->
-                    errorMessage = error
+                onError = { err ->
+                    errorMessage = err
+                },
+                onFallbackToPin = {
+                    // Falls back to in-app PIN screen seamlessly
                 }
             )
         }
     }
 
-    LaunchedEffect(Unit) {
-        if (hasDeviceAuth && activity != null) {
+    // Trigger fingerprint prompt on initial display if enabled
+    LaunchedEffect(isFingerprintEnabled) {
+        if (isFingerprintEnabled && hasBiometric && activity != null) {
             triggerBiometricPrompt()
+        }
+    }
+
+    fun submitPin(pin: String) {
+        if (lockoutSecondsRemaining > 0) return
+
+        if (viewModel.verifyPin(pin)) {
+            failedAttemptsCount = 0
+            lockoutRound = 1
+            errorMessage = null
+            enteredPin = ""
+            viewModel.unlockApp()
+        } else {
+            failedAttemptsCount++
+            enteredPin = ""
+            if (failedAttemptsCount >= 5) {
+                val delaySecs = 30 * lockoutRound
+                lockoutSecondsRemaining = delaySecs
+                lockoutRound *= 2
+                failedAttemptsCount = 0
+                errorMessage = "Too many failed attempts. Try again in $delaySecs seconds."
+            } else {
+                val remaining = 5 - failedAttemptsCount
+                errorMessage = "Incorrect PIN. $remaining attempts remaining."
+            }
         }
     }
 
@@ -116,7 +197,7 @@ fun AppLockScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             Text(
-                text = "ShopLedger Locked",
+                text = strings.hisaabLocked,
                 style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onBackground
             )
@@ -124,15 +205,30 @@ fun AppLockScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = if (customPin != null) "Enter your 4-digit PIN or use device lock" else "Confirm your device credentials to continue",
+                text = strings.enterAppPinPrompt,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            if (errorMessage != null) {
+            // Error or lockout countdown message
+            if (lockoutSecondsRemaining > 0) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                ) {
+                    Text(
+                        text = "Too many failed attempts. Try again in $lockoutSecondsRemaining seconds.",
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            } else if (errorMessage != null) {
                 Surface(
                     shape = RoundedCornerShape(12.dp),
                     color = MaterialTheme.colorScheme.errorContainer,
@@ -148,114 +244,115 @@ fun AppLockScreen(
                 }
             }
 
-            // PIN Dots Indicator (if custom PIN is enabled)
-            if (customPin != null) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.padding(vertical = 12.dp)
-                ) {
-                    repeat(4) { index ->
-                        val isFilled = index < enteredPin.length
-                        Box(
-                            modifier = Modifier
-                                .size(18.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    if (isFilled) MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.surfaceVariant
-                                )
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Custom Numeric Keypad
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth(0.85f)
-                ) {
-                    val keyRows = listOf(
-                        listOf("1", "2", "3"),
-                        listOf("4", "5", "6"),
-                        listOf("7", "8", "9"),
-                        listOf("bio", "0", "del")
+            // PIN Dots Indicator (4-6 digits)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                modifier = Modifier.padding(vertical = 12.dp)
+            ) {
+                val dotCount = maxOf(4, enteredPin.length)
+                repeat(dotCount) { index ->
+                    val isFilled = index < enteredPin.length
+                    Box(
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (isFilled) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.surfaceVariant
+                            )
                     )
+                }
+            }
 
-                    keyRows.forEach { row ->
-                        Row(
-                            horizontalArrangement = Arrangement.SpaceEvenly,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            row.forEach { key ->
-                                when (key) {
-                                    "bio" -> {
-                                        if (hasDeviceAuth) {
-                                            IconButton(
-                                                onClick = { triggerBiometricPrompt() },
-                                                modifier = Modifier.size(64.dp)
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.Fingerprint,
-                                                    contentDescription = "Use Biometrics",
-                                                    tint = MaterialTheme.colorScheme.primary,
-                                                    modifier = Modifier.size(32.dp)
-                                                )
-                                            }
-                                        } else {
-                                            Spacer(modifier = Modifier.size(64.dp))
-                                        }
-                                    }
-                                    "del" -> {
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Custom Keypad (1-9, Fingerprint/Clear, 0, Submit/Backspace)
+            val isKeypadDisabled = lockoutSecondsRemaining > 0
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth(0.85f)
+            ) {
+                val keyRows = listOf(
+                    listOf("1", "2", "3"),
+                    listOf("4", "5", "6"),
+                    listOf("7", "8", "9"),
+                    listOf("bio", "0", "del")
+                )
+
+                keyRows.forEach { row ->
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        row.forEach { key ->
+                            when (key) {
+                                "bio" -> {
+                                    if (isFingerprintEnabled && hasBiometric) {
                                         IconButton(
-                                            onClick = {
-                                                if (enteredPin.isNotEmpty()) {
-                                                    enteredPin = enteredPin.dropLast(1)
-                                                    errorMessage = null
-                                                }
-                                            },
+                                            onClick = { triggerBiometricPrompt() },
+                                            enabled = !isKeypadDisabled,
                                             modifier = Modifier.size(64.dp)
                                         ) {
                                             Icon(
-                                                imageVector = Icons.Default.Backspace,
-                                                contentDescription = "Backspace",
-                                                tint = MaterialTheme.colorScheme.onSurface
+                                                imageVector = Icons.Default.Fingerprint,
+                                                contentDescription = "Fingerprint Unlock",
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(32.dp)
                                             )
                                         }
+                                    } else {
+                                        Spacer(modifier = Modifier.size(64.dp))
                                     }
-                                    else -> {
-                                        Surface(
-                                            shape = CircleShape,
-                                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                            modifier = Modifier
-                                                .size(64.dp)
-                                                .clickable {
-                                                    if (enteredPin.length < 4) {
-                                                        val next = enteredPin + key
-                                                        enteredPin = next
-                                                        errorMessage = null
-                                                        if (next.length == 4) {
-                                                            if (next == customPin) {
-                                                                viewModel.unlockApp()
-                                                            } else {
-                                                                errorMessage = "Incorrect PIN. Try again."
-                                                                enteredPin = ""
-                                                            }
-                                                        }
+                                }
+                                "del" -> {
+                                    IconButton(
+                                        onClick = {
+                                            if (enteredPin.isNotEmpty()) {
+                                                enteredPin = enteredPin.dropLast(1)
+                                                errorMessage = null
+                                            }
+                                        },
+                                        enabled = !isKeypadDisabled,
+                                        modifier = Modifier.size(64.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Backspace,
+                                            contentDescription = "Backspace",
+                                            tint = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
+                                else -> {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = if (isKeypadDisabled) MaterialTheme.colorScheme.surfaceContainerLow
+                                                else MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        modifier = Modifier
+                                            .size(64.dp)
+                                            .clickable(enabled = !isKeypadDisabled) {
+                                                if (enteredPin.length < 6) {
+                                                    val next = enteredPin + key
+                                                    enteredPin = next
+                                                    errorMessage = null
+                                                    // Auto-submit if PIN length matches 4-6 digits and is verified
+                                                    if (next.length >= 4 && viewModel.verifyPin(next)) {
+                                                        submitPin(next)
                                                     }
                                                 }
-                                        ) {
-                                            Box(contentAlignment = Alignment.Center) {
-                                                Text(
-                                                    text = key,
-                                                    style = MaterialTheme.typography.titleLarge.copy(
-                                                        fontWeight = FontWeight.Bold,
-                                                        fontSize = 24.sp
-                                                    ),
-                                                    color = MaterialTheme.colorScheme.onSurface
-                                                )
                                             }
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Text(
+                                                text = key,
+                                                style = MaterialTheme.typography.titleLarge.copy(
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 24.sp
+                                                ),
+                                                color = if (isKeypadDisabled) MaterialTheme.colorScheme.outline
+                                                        else MaterialTheme.colorScheme.onSurface
+                                            )
                                         }
                                     }
                                 }
@@ -267,30 +364,105 @@ fun AppLockScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (hasDeviceAuth) {
+            // Submit Button if user enters 4-6 digits
+            if (enteredPin.length in 4..6) {
                 Button(
-                    onClick = { triggerBiometricPrompt() },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    ),
+                    onClick = { submitPin(enteredPin) },
+                    enabled = !isKeypadDisabled,
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     shape = RoundedCornerShape(14.dp),
                     modifier = Modifier
                         .fillMaxWidth(0.85f)
-                        .height(50.dp)
-                        .testTag("unlock_biometric_button")
+                        .height(48.dp)
+                        .testTag("submit_pin_button")
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Fingerprint,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    Icon(imageVector = Icons.Default.Check, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Unlock with Device Lock",
+                        text = "Unlock",
                         style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Forgot PIN button
+            TextButton(
+                onClick = { showForgotPinDialog = true },
+                modifier = Modifier.testTag("forgot_pin_button")
+            ) {
+                Text(
+                    text = strings.forgotPin,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
+                )
+            }
         }
+    }
+
+    // Forgot PIN Dialog
+    if (showForgotPinDialog) {
+        AlertDialog(
+            onDismissRequest = { showForgotPinDialog = false },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
+            title = { Text(text = strings.forgotPinTitle) },
+            text = { Text(text = strings.forgotPinWarning) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showForgotPinDialog = false
+                        openDocLauncher.launch(arrayOf("application/json"))
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text(text = strings.restoreFromBackup)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = {
+                        showForgotPinDialog = false
+                        showConfirmClearDataDialog = true
+                    },
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text(text = strings.clearAllData)
+                }
+            }
+        )
+    }
+
+    // Secondary Confirmation Dialog for Clear All Data
+    if (showConfirmClearDataDialog) {
+        AlertDialog(
+            onDismissRequest = { showConfirmClearDataDialog = false },
+            title = { Text(text = strings.deleteConfirmTitle) },
+            text = { Text(text = "Are you sure you want to clear all data and reset Hisaab? All shops and financial ledgers will be permanently erased.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showConfirmClearDataDialog = false
+                        viewModel.clearAllData {
+                            viewModel.unlockApp()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text(text = strings.clearAllData)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showConfirmClearDataDialog = false }) {
+                    Text(text = strings.cancel)
+                }
+            }
+        )
     }
 }

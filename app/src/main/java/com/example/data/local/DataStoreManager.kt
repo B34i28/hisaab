@@ -5,19 +5,23 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.example.util.PinHasher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "shop_ledger_prefs")
+val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "hisaab_prefs")
 
 class DataStoreManager(private val context: Context) {
 
     companion object {
         val SELECTED_SHOP_ID_KEY = longPreferencesKey("selected_shop_id")
         val APP_LOCK_ENABLED_KEY = booleanPreferencesKey("app_lock_enabled")
+        val FINGERPRINT_ENABLED_KEY = booleanPreferencesKey("fingerprint_enabled")
+        val AUTO_LOCK_TIMEOUT_KEY = intPreferencesKey("auto_lock_timeout_seconds")
         val CUSTOM_PIN_KEY = stringPreferencesKey("custom_pin")
         val THEME_MODE_KEY = stringPreferencesKey("theme_mode")
         val APP_LANGUAGE_KEY = stringPreferencesKey("app_language")
@@ -44,6 +48,29 @@ class DataStoreManager(private val context: Context) {
     suspend fun setAppLockEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[APP_LOCK_ENABLED_KEY] = enabled
+            if (!enabled) {
+                preferences[FINGERPRINT_ENABLED_KEY] = false
+            }
+        }
+    }
+
+    val isFingerprintEnabled: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[FINGERPRINT_ENABLED_KEY] ?: false
+    }
+
+    suspend fun setFingerprintEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[FINGERPRINT_ENABLED_KEY] = enabled
+        }
+    }
+
+    val autoLockTimeoutSeconds: Flow<Int> = context.dataStore.data.map { preferences ->
+        preferences[AUTO_LOCK_TIMEOUT_KEY] ?: 30
+    }
+
+    suspend fun setAutoLockTimeoutSeconds(seconds: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[AUTO_LOCK_TIMEOUT_KEY] = seconds
         }
     }
 
@@ -51,13 +78,22 @@ class DataStoreManager(private val context: Context) {
         preferences[CUSTOM_PIN_KEY]
     }
 
-    suspend fun setCustomPin(pin: String?) {
+    suspend fun setCustomPin(plainPin: String?) {
         context.dataStore.edit { preferences ->
-            if (pin != null) {
-                preferences[CUSTOM_PIN_KEY] = pin
+            if (plainPin != null) {
+                preferences[CUSTOM_PIN_KEY] = PinHasher.createStoredPinHash(plainPin)
             } else {
                 preferences.remove(CUSTOM_PIN_KEY)
             }
+        }
+    }
+
+    suspend fun clearAllSecurityAndSettings() {
+        context.dataStore.edit { preferences ->
+            preferences.remove(APP_LOCK_ENABLED_KEY)
+            preferences.remove(FINGERPRINT_ENABLED_KEY)
+            preferences.remove(CUSTOM_PIN_KEY)
+            preferences.remove(AUTO_LOCK_TIMEOUT_KEY)
         }
     }
 

@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "ShopLedger"
+rootProject.name = "Hisaab"
 
 include(":app")

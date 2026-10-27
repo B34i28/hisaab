@@ -69,7 +69,7 @@ object BackupUtils {
         val customerWriteOffs = database.customerWriteOffDao().getAllWriteOffsList()
 
         val root = JSONObject().apply {
-            put("appName", "ShopLedger")
+            put("appName", "Hisaab")
             put("version", 2)
             put("exportTimestamp", System.currentTimeMillis())
 
@@ -216,8 +216,8 @@ object BackupUtils {
         val root = JSONObject(jsonString)
 
         val appName = root.optString("appName", "")
-        if (appName.isNotEmpty() && appName != "ShopLedger") {
-            throw IllegalArgumentException("Invalid backup file: not a ShopLedger backup.")
+        if (appName.isNotEmpty() && appName != "Hisaab" && appName != "ShopLedger") {
+            throw IllegalArgumentException("Invalid backup file: not a Hisaab backup.")
         }
 
         val exportDate = root.optLong("exportTimestamp", System.currentTimeMillis())
@@ -443,7 +443,7 @@ object BackupUtils {
     fun shareBackup(context: Context, jsonString: String) {
         val backupDir = File(context.cacheDir, "backups").apply { mkdirs() }
         val dateStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val backupFile = File(backupDir, "ShopLedger_Backup_$dateStamp.json")
+        val backupFile = File(backupDir, "Hisaab_Backup_$dateStamp.json")
 
         backupFile.writeText(jsonString)
 
@@ -456,12 +456,12 @@ object BackupUtils {
         val shareIntent = Intent(Intent.ACTION_SEND).apply {
             type = "application/json"
             putExtra(Intent.EXTRA_STREAM, uri)
-            putExtra(Intent.EXTRA_SUBJECT, "ShopLedger Backup - $dateStamp")
-            putExtra(Intent.EXTRA_TEXT, "Here is your ShopLedger database backup. Keep it safe to restore your shops, ledgers, and accounts.")
+            putExtra(Intent.EXTRA_SUBJECT, "Hisaab Backup - $dateStamp")
+            putExtra(Intent.EXTRA_TEXT, "Here is your Hisaab database backup. Keep it safe to restore your shops, ledgers, and accounts.")
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
 
-        context.startActivity(Intent.createChooser(shareIntent, "Share or Save ShopLedger Backup"))
+        context.startActivity(Intent.createChooser(shareIntent, "Share or Save Hisaab Backup"))
     }
 
     /**

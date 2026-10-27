@@ -51,7 +51,7 @@ import com.example.ui.screens.suppliers.SuppliersScreen
 import com.example.ui.viewmodel.ShopViewModel
 
 @Composable
-fun ShopLedgerApp(viewModel: ShopViewModel) {
+fun HisaabApp(viewModel: ShopViewModel) {
     val navController = rememberNavController()
     val allShops by viewModel.allShops.collectAsStateWithLifecycle()
     val currentShop by viewModel.currentShop.collectAsStateWithLifecycle()
@@ -334,4 +334,10 @@ fun ShopLedgerApp(viewModel: ShopViewModel) {
             }
         )
     }
+}
+
+@Deprecated("Use HisaabApp instead", ReplaceWith("HisaabApp(viewModel)"))
+@Composable
+fun ShopLedgerApp(viewModel: ShopViewModel) {
+    HisaabApp(viewModel)
 }

@@ -40,7 +40,7 @@ object ReportExportUtils {
         try {
             val reportsDir = File(context.cacheDir, "reports").apply { mkdirs() }
             val cleanShopName = shopName.replace(Regex("[^a-zA-Z0-9_]"), "_")
-            val csvFile = File(reportsDir, "ShopLedger_${cleanShopName}_${System.currentTimeMillis()}.csv")
+            val csvFile = File(reportsDir, "Hisaab_${cleanShopName}_${System.currentTimeMillis()}.csv")
 
             val totalExpenses = expenses.sumOf { it.amount }
             val categoryBreakdown = expenses.groupBy { it.category }
@@ -51,7 +51,7 @@ object ReportExportUtils {
                 }.sortedByDescending { it.second }
 
             FileWriter(csvFile).use { writer ->
-                writer.append("ShopLedger Financial Report\n")
+                writer.append("Hisaab Financial Report\n")
                 writer.append("Shop Name,\"${shopName.replace("\"", "\"\"")}\"\n")
                 writer.append("Date Range,\"${dateRangeStr.replace("\"", "\"\"")}\"\n")
                 writer.append("Generated On,\"${DateUtils.formatDateTime(System.currentTimeMillis())}\"\n\n")
@@ -119,7 +119,7 @@ object ReportExportUtils {
                 type = "text/csv"
                 putExtra(Intent.EXTRA_STREAM, fileUri)
                 putExtra(Intent.EXTRA_SUBJECT, "$shopName - Financial Report ($dateRangeStr)")
-                putExtra(Intent.EXTRA_TEXT, "Here is the ShopLedger CSV financial report for $shopName ($dateRangeStr).")
+                putExtra(Intent.EXTRA_TEXT, "Here is the Hisaab CSV financial report for $shopName ($dateRangeStr).")
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
 
@@ -150,7 +150,7 @@ object ReportExportUtils {
         try {
             val reportsDir = File(context.cacheDir, "reports").apply { mkdirs() }
             val cleanShopName = shopName.replace(Regex("[^a-zA-Z0-9_]"), "_")
-            val pdfFile = File(reportsDir, "ShopLedger_${cleanShopName}_${System.currentTimeMillis()}.pdf")
+            val pdfFile = File(reportsDir, "Hisaab_${cleanShopName}_${System.currentTimeMillis()}.pdf")
 
             val pdfDocument = PdfDocument()
             val pageWidth = 595 // Standard A4 width in pt
@@ -173,7 +173,7 @@ object ReportExportUtils {
             textPaint.color = Color.WHITE
             textPaint.textSize = 20f
             textPaint.isFakeBoldText = true
-            canvas.drawText("ShopLedger Financial Statement", 24f, 36f, textPaint)
+            canvas.drawText("Hisaab Financial Statement", 24f, 36f, textPaint)
 
             textPaint.textSize = 12f
             textPaint.isFakeBoldText = false
@@ -339,7 +339,7 @@ object ReportExportUtils {
                 type = "application/pdf"
                 putExtra(Intent.EXTRA_STREAM, fileUri)
                 putExtra(Intent.EXTRA_SUBJECT, "$shopName - Financial Report ($dateRangeStr)")
-                putExtra(Intent.EXTRA_TEXT, "Here is your ShopLedger PDF financial report for $shopName ($dateRangeStr).")
+                putExtra(Intent.EXTRA_TEXT, "Here is your Hisaab PDF financial report for $shopName ($dateRangeStr).")
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
 

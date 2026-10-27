@@ -199,6 +199,17 @@ data class AppStrings(
     val exportBackup: String = "Export Backup (JSON)",
     val restoreBackup: String = "Restore Backup from File",
 
+    // App Lock & Security
+    val fingerprintNote: String = "Fingerprint uses the fingerprints saved on this phone.",
+    val useHisaabPin: String = "Use Hisaab PIN",
+    val hisaabLocked: String = "Hisaab Locked",
+    val enterAppPinPrompt: String = "Enter your 4-6 digit Hisaab PIN",
+    val forgotPin: String = "Forgot PIN?",
+    val forgotPinTitle: String = "Reset App PIN",
+    val forgotPinWarning: String = "Resetting your PIN requires clearing app data, which will erase all records unless a backup exists.",
+    val restoreFromBackup: String = "Restore from Hisaab Backup",
+    val clearAllData: String = "Clear All Data",
+
     // Empty states
     val noTransactionsYet: String = "No transactions recorded for this period.",
     val noSalesYet: String = "No sales recorded yet. Tap + to record a sale.",
@@ -208,13 +219,13 @@ data class AppStrings(
     val noShopSelectedState: String = "Please create or select a shop to manage ledger accounts.",
 
     // First Shop & Onboarding
-    val welcomeTitle: String = "Welcome to ShopLedger",
-    val welcomeSubtitle: String = "Offline-first shop bookkeeping app.\nTrack sales, expenses, purchases, and supplier credit with zero hassle.",
+    val welcomeTitle: String = "Welcome to Hisaab",
+    val welcomeSubtitle: String = "Offline-first shop bookkeeping app.\nTrack sales, expenses, purchases, and customer/supplier credit with zero hassle.",
     val addFirstShopTitle: String = "Add your first shop",
     val shopNamePrompt: String = "Shop or Business Name",
     val shopNameEmptyError: String = "Shop name cannot be empty",
     val quickSuggestions: String = "Quick suggestions:",
-    val startUsingApp: String = "Start Using ShopLedger",
+    val startUsingApp: String = "Start Using Hisaab",
     val offlineSecurityNotice: String = "🔒 100% Offline & Private: All your records stay safe on this phone.",
 
     // Dialog messages
@@ -391,6 +402,17 @@ val UrduStrings = AppStrings(
     exportBackup = "بیک اپ محفوظ کریں (JSON)",
     restoreBackup = "بیک اپ فائل سے بحال کریں",
 
+    // App Lock & Security
+    fingerprintNote = "فنگر پرنٹ اس فون میں محفوظ فنگر پرنٹس کا استعمال کرتا ہے۔",
+    useHisaabPin = "حساب پن استعمال کریں",
+    hisaabLocked = "حساب ایپ لاک ہے",
+    enterAppPinPrompt = "اپنا 4 سے 6 ہندسوں کا حساب پن درج کریں",
+    forgotPin = "پن بھول گئے؟",
+    forgotPinTitle = "ایپ پن ری سیٹ کریں",
+    forgotPinWarning = "پن ری سیٹ کرنے کے لیے ایپ ڈیٹا صاف کرنا پڑے گا، جس سے تمام ریکارڈز ختم ہو جائیں گے الا یہ کہ آپ کے پاس بیک اپ موجود ہو۔",
+    restoreFromBackup = "حساب بیک اپ سے بحال کریں",
+    clearAllData = "تمام ڈیٹا صاف کریں",
+
     // Empty states
     noTransactionsYet = "اس مدت میں کوئی لین دین درج نہیں ہے۔",
     noSalesYet = "ابھی تک کوئی سیل نہیں ہوئی۔ نیا ریکارڈ درج کرنے کے لیے + دبائیں۔",
@@ -400,13 +422,13 @@ val UrduStrings = AppStrings(
     noShopSelectedState = "کھاتہ چلانے کے لیے براہ کرم ایک دکان بنائیں یا منتخب کریں۔",
 
     // First Shop & Onboarding
-    welcomeTitle = "شاپ لیجر میں خوش آمدید",
-    welcomeSubtitle = "آپ کے کاروبار کے کھاتے کے لیے آف لائن اور محفوظ ایپ۔ سیلز، اخراجات اور سپلائر کا ادھار آسانی سے سنبھالیں۔",
+    welcomeTitle = "حساب ایپ میں خوش آمدید",
+    welcomeSubtitle = "آپ کے کاروبار کے کھاتے کے لیے آف لائن اور محفوظ ایپ۔ سیلز، اخراجات اور ادھار کھاتہ آسانی سے سنبھالیں۔",
     addFirstShopTitle = "اپنی پہلی دکان کا اندراج کریں",
     shopNamePrompt = "دکان یا کاروبار کا نام",
     shopNameEmptyError = "دکان کا نام خالی نہیں ہو سکتا",
     quickSuggestions = "فوری تجاویز:",
-    startUsingApp = "شاپ لیجر شروع کریں",
+    startUsingApp = "حساب کا استعمال شروع کریں",
     offlineSecurityNotice = "🔒 100% آف لائن اور پرائیویٹ: آپ کا تمام ڈیٹا صرف آپ کے فون میں محفوظ ہے۔",
 
     // Dialog messages

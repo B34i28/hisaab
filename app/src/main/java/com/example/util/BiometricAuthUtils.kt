@@ -9,29 +9,35 @@ import androidx.fragment.app.FragmentActivity
 object BiometricAuthUtils {
 
     /**
-     * Checks if the device has biometric or screen lock (PIN/pattern/password) configured.
+     * Checks if the device has strong biometric hardware and enrolled fingerprints.
      */
     fun canAuthenticate(context: Context): Boolean {
         val biometricManager = BiometricManager.from(context)
-        val authenticators = BiometricManager.Authenticators.BIOMETRIC_STRONG or
-                BiometricManager.Authenticators.DEVICE_CREDENTIAL
-        val result = biometricManager.canAuthenticate(authenticators)
+        val result = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)
         return result == BiometricManager.BIOMETRIC_SUCCESS
     }
 
     /**
-     * Prompts the user with the system Biometric / Device PIN prompt.
+     * Prompts the user with BiometricPrompt (BIOMETRIC_STRONG only).
+     * Does NOT use DEVICE_CREDENTIAL or setDeviceCredentialAllowed.
+     * Provides a negative button ("Use Hisaab PIN") that falls back to in-app PIN.
+     * Automatically falls back to PIN after 3 failed fingerprint attempts.
      */
     fun authenticate(
         activity: FragmentActivity,
-        title: String = "ShopLedger Security",
-        subtitle: String = "Confirm your biometric or device PIN/pattern to continue",
+        title: String = "Hisaab Fingerprint",
+        subtitle: String = "Touch the fingerprint sensor to unlock",
+        negativeButtonText: String = "Use Hisaab PIN",
         onSuccess: () -> Unit,
         onError: (String) -> Unit,
-        onCancel: () -> Unit = {}
+        onFallbackToPin: () -> Unit
     ) {
+        var failedAttempts = 0
         val executor = ContextCompat.getMainExecutor(activity)
-        val prompt = BiometricPrompt(
+
+        lateinit var biometricPrompt: BiometricPrompt
+
+        biometricPrompt = BiometricPrompt(
             activity,
             executor,
             object : BiometricPrompt.AuthenticationCallback() {
@@ -45,15 +51,20 @@ object BiometricAuthUtils {
                     if (errorCode == BiometricPrompt.ERROR_USER_CANCELED ||
                         errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON
                     ) {
-                        onCancel()
+                        onFallbackToPin()
                     } else {
                         onError(errString.toString())
+                        onFallbackToPin()
                     }
                 }
 
                 override fun onAuthenticationFailed() {
                     super.onAuthenticationFailed()
-                    // Kept for individual attempt failure, prompt remains open
+                    failedAttempts++
+                    if (failedAttempts >= 3) {
+                        biometricPrompt.cancelAuthentication()
+                        onFallbackToPin()
+                    }
                 }
             }
         )
@@ -61,12 +72,10 @@ object BiometricAuthUtils {
         val promptInfo = BiometricPrompt.PromptInfo.Builder()
             .setTitle(title)
             .setSubtitle(subtitle)
-            .setAllowedAuthenticators(
-                BiometricManager.Authenticators.BIOMETRIC_STRONG or
-                        BiometricManager.Authenticators.DEVICE_CREDENTIAL
-            )
+            .setNegativeButtonText(negativeButtonText)
+            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
             .build()
 
-        prompt.authenticate(promptInfo)
+        biometricPrompt.authenticate(promptInfo)
     }
 }

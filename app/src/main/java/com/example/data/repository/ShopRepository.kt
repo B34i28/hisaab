@@ -77,6 +77,22 @@ class ShopRepository(
     private val saleDao = database.saleDao()
     private val expenseDao = database.expenseDao()
 
+    // Settings & Security
+    val isAppLockEnabled: Flow<Boolean> = dataStoreManager.isAppLockEnabled
+    val isFingerprintEnabled: Flow<Boolean> = dataStoreManager.isFingerprintEnabled
+    val autoLockTimeoutSeconds: Flow<Int> = dataStoreManager.autoLockTimeoutSeconds
+    val customPin: Flow<String?> = dataStoreManager.customPin
+    val themeMode: Flow<String> = dataStoreManager.themeMode
+    val appLanguage: Flow<String> = dataStoreManager.appLanguage
+
+    suspend fun setAppLockEnabled(enabled: Boolean) = dataStoreManager.setAppLockEnabled(enabled)
+    suspend fun setFingerprintEnabled(enabled: Boolean) = dataStoreManager.setFingerprintEnabled(enabled)
+    suspend fun setAutoLockTimeoutSeconds(seconds: Int) = dataStoreManager.setAutoLockTimeoutSeconds(seconds)
+    suspend fun setCustomPin(pin: String?) = dataStoreManager.setCustomPin(pin)
+    suspend fun clearAllSecurityAndSettings() = dataStoreManager.clearAllSecurityAndSettings()
+    suspend fun setThemeMode(mode: String) = dataStoreManager.setThemeMode(mode)
+    suspend fun setAppLanguage(languageCode: String) = dataStoreManager.setAppLanguage(languageCode)
+
     // Shop operations
     val allShops: Flow<List<Shop>> = shopDao.getAllShops()
     val selectedShopId: Flow<Long?> = dataStoreManager.selectedShopId
@@ -112,30 +128,6 @@ class ShopRepository(
         } else {
             setSelectedShopId(null)
         }
-    }
-
-    // App Lock Preferences
-    val isAppLockEnabled: Flow<Boolean> = dataStoreManager.isAppLockEnabled
-    val customPin: Flow<String?> = dataStoreManager.customPin
-
-    suspend fun setAppLockEnabled(enabled: Boolean) {
-        dataStoreManager.setAppLockEnabled(enabled)
-    }
-
-    suspend fun setCustomPin(pin: String?) {
-        dataStoreManager.setCustomPin(pin)
-    }
-
-    // Theme & Language Preferences
-    val themeMode: Flow<String> = dataStoreManager.themeMode
-    val appLanguage: Flow<String> = dataStoreManager.appLanguage
-
-    suspend fun setThemeMode(mode: String) {
-        dataStoreManager.setThemeMode(mode)
-    }
-
-    suspend fun setAppLanguage(lang: String) {
-        dataStoreManager.setAppLanguage(lang)
     }
 
     // Backup & Restore
