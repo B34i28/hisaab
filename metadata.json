@@ -1,0 +1,6 @@
+{
+  "name": "ShopLedger",
+  "description": "Offline-first accounts app for local shop owners to manage multi-shop sales, expenses, purchases, and supplier balances.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

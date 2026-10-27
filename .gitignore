@@ -1,0 +1,21 @@
+# Build artifacts
+build/
+app/build/
+.gradle/
+.kotlin/
+
+# IDE / Project files
+.idea/
+*.iml
+/captures
+.externalNativeBuild
+.cxx
+.DS_Store
+
+# Local secrets & properties
+local.properties
+.env
+
+# Explicitly keep Gradle Wrapper
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
